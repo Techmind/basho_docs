@@ -12,11 +12,13 @@ This is not a comprehensive listing of every error that Riak can encounter -- sc
 
 ### Message Format
 
-The tables below do not specify which logs these error messages may appear in. Depending upon your log configuration some may appear more often -- if you're set to log debug, while others may output to your console (eg. if you tee'd your output or started as `riak console`). This is organized to be able to lookup a portion of a log message.
+The tables below do not specify which logs these error messages may appear in. Depending upon your log configuration some may appear more often -- if you're set to log debug, while others may output to your console (eg. if you tee'd your output or started as `riak console`). You can also change your `app.config` 
 
-Riak does not format all error message that it receives into human-readable sentences. However, It does output many errors as objects.
+This is organized to be able to lookup a portion of a log message.
 
-22:35:17.862 [error] gen_server riak_core_capability terminated with reason: no function clause matching orddict:fetch('riak@192.168.2.101', []) line 72
+```
+12:34:27.999 [error] gen_server riak_core_capability terminated with reason: no function clause matching orddict:fetch('riak@192.168.2.81', []) line 72
+```
 
 ## erlang
 
@@ -28,6 +30,45 @@ Error    | Message | Description | Resolution
 {error,econnrefused} | | Remote erlang node connection refused | Could be a few problems. Ensure your remote `vm.args` `-setcookie` must be the same value for every node in the cluster. The `vm.args` `-name` value must not change after joining the node (unless you use `riak-admin cluster replace`). Ensure your machine does not have a firewall or other issue that prevents traffic to the remote node.
 {error,enoent} | | Missing an expected file or directory | Ensure all `*_dir` values in `app.config` exist, for example, `ring_state_dir`, `platform_data_dir`, and others.
 system_memory_high_watermark | | Often a sign than an Erlang ets table has grown too large | Check that you are using a backend appropriate for your needs (leveldb for very large key counts), that your vnode count is reasonable (measured in dozens per node rather than hundreds).
+
+## Lager Formats
+
+Riak's main logging mechanism is the project Lager, so it's good to note some of the more common message formats. In almost every case the reasons for the error are described as variables, such as `Reason` of `Mod` (meaning the Erlang module which is generally the source of the error).
+
+Riak does not format all error message that it receives into human-readable sentences. However, It does output errors as objects. The example error message shown previously looked like this:
+
+```
+12:34:27.999 [error] gen_server riak_core_capability terminated with reason: no function clause matching orddict:fetch('riak@192.168.2.81', []) line 72
+```
+
+It corrosponds wo tht first message in this table, where the erlang `Mod` value is **riak_core_capability** and the reason was an Erlang error: **no function clause matching orddict:fetch('riak@192.168.2.81', []) line 72**
+
+Error | Message
+------|--------
+ | gen_server `Mod` terminated with reason: `Reason`
+ | gen_fsm `Mod` in state `State` terminated with reason: `Reason`
+ | gen_event `ID` installed in `Mod` terminated with reason: `Reason`
+badarg | bad argument in call to `Mod1` in `Mod2`
+badarith | bad arithmetic expression in `Mod`
+badarity | fun called with wrong arity of `Ar1` instead of `Ar2` in `Mod`
+badmatch | no match of right hand value `Val` in `Mod`
+bad_return | bad return value `Value` from `Mod`
+bad_return_value | bad return value: `Val` in `Mod`
+badrecord | bad record `Record` in `Mod`
+case_clause | no case clause matching `Val` in `Mod`
+emfile | maximum number of file descriptors exhausted, check ulimit -n
+function_clause | no function clause matching `Mod`
+'function not exported' | call to undefined function `Func` from `Mod` |
+if_clause | no true branch found while evaluating if expression in `Mod`
+noproc | no such process or port in call to `Mod`
+{system_limit, {erlang, open_port}} | maximum number of ports exceeded
+{system_limit, {erlang, spawn}} | maximum number of processes exceeded
+{system_limit, {erlang, spawn_opt}} | maximum number of processes exceeded
+{system_limit, {erlang, list_to_atom}} | tried to create an atom larger than 255, or maximum atom count exceeded
+{system_limit, {ets, new}} | maximum number of ETS tables exceeded
+try_clause | no try clause matching `Val` in `Mod`
+undef | call to undefined function `Mod`
+
 
 ## riak_kv
 
@@ -85,33 +126,6 @@ too_many_fails |  | Too many write failures to satisfy W or DW | Try write again
  | Invalid range query: `Min` -> `Max` | Both range query values are required and must be binary an index call | Pass in both range values when performing a 2i equality query
  | Failed to start `Mod` `Reason`:`Reason` | Riak KV failed to start for given `Reason` | Several possible reasons for failure, read the attached reason for insight into resolution
  
-### Lager
-
-Error | Message
-------|--------
- | gen_server `Mod` terminated with reason: `Reason`
- | gen_fsm `Mod` in state `State` terminated with reason: `Reason`
- | gen_event `ID` installed in `Mod` terminated with reason: `Reason`
-'function not exported' | call to undefined function `Func` from `Mod` |
-undef | call to undefined function `Mod`
-bad_return | bad return value `Value` from `Mod`
-bad_return_value | bad return value: `Val` in `Mod`
-badrecord | bad record `Record` in `Mod`
-case_clause | no case clause matching `Val` in `Mod`
-function_clause | no function clause matching `Mod`
-if_clause | no true branch found while evaluating if expression in `Mod`
-try_clause | no try clause matching `Val` in `Mod`
-badarith | bad arithmetic expression in `Mod`
-badmatch | no match of right hand value `Val` in `Mod`
-emfile | maximum number of file descriptors exhausted, check ulimit -n
-{system_limit, {erlang, open_port}} | maximum number of ports exceeded
-{system_limit, {erlang, spawn}} | maximum number of processes exceeded
-{system_limit, {erlang, spawn_opt}} | maximum number of processes exceeded
-{system_limit, {erlang, list_to_atom}} | tried to create an atom larger than 255, or maximum atom count exceeded
-{system_limit, {ets, new}} | maximum number of ETS tables exceeded
-badarg | bad argument in call to `Mod1` in `Mod2`
-badarity | fun called with wrong arity of `Ar1` instead of `Ar2` in `Mod`
-noproc | no such process or port in call to `Mod`
 
 ### Backend Errors
 
@@ -393,3 +407,12 @@ TODO: search error, fail, lager:error, lager:critical or throw
 
 NONE
 
+
+
+## Specific messages
+
+ Message | Resolution
+---------|-----------
+gen_server riak_core_capability terminated with reason: no function clause matching orddict:fetch('`Node`', []) | The Node has been renamed, either through change of IP or `vm.args` `-name`. Either the 
+
+or the Ring files be removed `rm -rf /var/lib/riak/ring/*`
